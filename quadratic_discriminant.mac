@@ -33,3 +33,12 @@ qd_construct (xyc) := block ([xyc0, xyc1, mu0, mu1, XX0, XX1, n0, n1, Sigma0, Si
 data : read_matrix ("xyc.data");
 myqd : qd_construct (data);
 contour_plot (lambda ([x, y], qd_log_odds (x, y, myqd)), [x, 0, 10], [y, 0, 10]);
+
+myqd_pooled : copy(myqd);
+S0 : myqd@Sigma0;
+S1 : myqd@Sigma1;
+S_pooled : (myqd@n0 * S0 + myqd@n1 * S1)/(myqd@n0 + myqd@n1);
+S_pooled_inv : invert (S_pooled);
+myqd_pooled@Sigma0 : myqd_pooled@Sigma1 : S_pooled;
+myqd_pooled@Sigma0_inv : myqd_pooled@Sigma1_inv : S_pooled_inv;
+contour_plot (lambda ([x, y], qd_log_odds (x, y, myqd_pooled)), [x, 0, 10], [y, 0, 10]);
