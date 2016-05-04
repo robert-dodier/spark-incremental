@@ -1,0 +1,35 @@
+load (descriptive);
+
+defstruct (qd_model (n0, mu0, Sigma0, Sigma0_inv, n1, mu1, Sigma1, Sigma1_inv));
+
+qd_pc1xy (x, y, qd) := block ([pxyc0, pxyc1],
+  pxyc0 : p_gaussian2 ([x, y], qd@mu0, qd@Sigma0_inv),
+  pxyc1 : p_gaussian2 ([x, y], qd@mu1, qd@Sigma1_inv),
+  pxyc1*qd@n1 / (pxyc0*qd@n0 + pxyc1*qd@n1));
+
+logexpand:super $
+
+qd_log_odds (x, y, qd) :=
+  ''(log (qd@n1 * p_gaussian2 ([x, y], qd@mu1, qd@Sigma1_inv) / (qd@n0 * p_gaussian2 ([x, y], qd@mu0, qd@Sigma0_inv))));
+
+p_gaussian2 (xy, mu, Sigma_inv) :=
+  exp(-(1/2) * (xy - mu) . (Sigma_inv . (xy - mu))) / sqrt(2*%pi) * sqrt (determinant (Sigma_inv));
+
+qd_construct (xyc) := block ([xyc0, xyc1, mu0, mu1, XX0, XX1, n0, n1, Sigma0, Sigma1, Sigma0_inv, Sigma1_inv],
+  xyc0 : apply (matrix, map (lambda ([r], rest (r, -1)), sublist (args (xyc), lambda ([r], r[3] = 0)))),
+  xyc1 : apply (matrix, map (lambda ([r], rest (r, -1)), sublist (args (xyc), lambda ([r], r[3] = 1)))),
+  mu0 : mean (xyc0),
+  mu1 : mean (xyc1),
+  XX0 : transpose (xyc0) . xyc0,
+  XX1 : transpose (xyc1) . xyc1, 
+  n0 : length (xyc0),
+  n1 : length (xyc1),
+  Sigma0 : XX0/n0 - transpose (mu0) . mu0,
+  Sigma1 : XX1/n1 - transpose (mu1) . mu1,
+  Sigma0_inv : invert (Sigma0),
+  Sigma1_inv : invert (Sigma1),
+  qd_model (n0, mu0, Sigma0, Sigma0_inv, n1, mu1, Sigma1, Sigma1_inv));
+
+data : read_matrix ("xyc.data");
+myqd : qd_construct (data);
+contour_plot (lambda ([x, y], qd_log_odds (x, y, myqd)), [x, 0, 10], [y, 0, 10]);
