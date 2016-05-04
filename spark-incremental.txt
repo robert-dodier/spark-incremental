@@ -1,0 +1,25 @@
+Exact incremental updates for some machine learning models
+Robert Dodier
+
+Problem statement
+ * We're building ML models from lots of data
+ * We get more data from time to time
+ * We want to update the model with the new data
+ * In general, it's necessary to start over with the whole data set
+ * Under what circumstances can we work with just the new data?
+
+Short answer
+ * Exact incremental update == model has ``sufficient statistics''
+ * ``Sufficient'' means: if you have these statistics, you can throw away anything else
+ * Not all models have sufficient statistics
+ * ... but some interesting models do: linear regression, logistic regression, quadratic discriminant
+ * More speculatively, some models which have latent / hidden / missing variables
+ ** often trained with expectation-maximization algorithms -- E step = estimate missing variables,
+    M step = maximum likelihood given missing
+ ** M step may have sufficient statistics
+ ** ... so the model ``almost'' or ``sort of'' has sufficient statistics
+ ** e.g. Gaussian mixture, topic-word models
+ ** maybe neural networks and tree-structured models as well?
+ *** for n.n., hidden variables might be the parameters for the hidden units
+ *** for tree models, hidden variables might be the location of splits in different dimensions
+ * Can we exploit s.s., for example, by fixing the missing variables and carrying out only the M step?
