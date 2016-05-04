@@ -5,46 +5,57 @@ import org.apache.spark.mllib.linalg.distributed.RowMatrix
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.stat.Statistics
     
-class QuadraticDiscriminant (val sc: SparkContext, val x: RDD [LabeledPoint])
+case class QuadraticDiscrminantSufficientStatistics {
+  val N_positive
+  val N_negative
+  val X_sum_positive
+  val X_sum_negative
+  val X2_sum_positive
+  val X2_sum_negative
+}
+
+class QuadraticDiscriminant (val sc: SparkContext, val summary: QuadraticDiscrminantSufficientStatistics)
 {
-  val x_positive = x.filter {case LabeledPoint (l, f) => l == 1.0}
-  val x_negative = x.filter {case LabeledPoint (l, f) => l != 1.0}
+  val summary = summary
+
+  def this (val sc: SparkContext, val summary: QuadraticDiscrminantSufficientStatistics, val x: RDD [LabeledPoint]) {
+    val X_positive = x.filter {case LabeledPoint (l, f) => l == 1.0}
+    val X_negative = x.filter {case LabeledPoint (l, f) => l != 1.0}
   
-  val summary_positive = Statistics.colStats (x_positive.map {case LabeledPoint (l, f) => f})
-  val summary_negative = Statistics.colStats (x_negative.map {case LabeledPoint (l, f) => f})
+    val colstats_positive = Statistics.colStats (X_positive.map {case LabeledPoint (l, f) => f})
+    val colstats_negative = Statistics.colStats (X_negative.map {case LabeledPoint (l, f) => f})
   
-  val x0_positive = x_positive.map {case LabeledPoint (l, f) => (f.toArray zip summary_positive.mean.toArray).map {case (a, b) => a - b}}
-  val x0_negative = x_negative.map {case LabeledPoint (l, f) => (f.toArray zip summary_negative.mean.toArray).map {case (a, b) => a - b}}
+    val x0_positive = X_positive.map {case LabeledPoint (l, f) => (f.toArray zip colstats_positive.mean.toArray).map {case (a, b) => a - b}}
+    val x0_negative = X_negative.map {case LabeledPoint (l, f) => (f.toArray zip colstats_negative.mean.toArray).map {case (a, b) => a - b}}
   
-  val N_positive = x_positive.count
-  val N_negative = x_negative.count
-  val N = N_positive + N_negative
-  
-  val n = x.collect()(0).features.size
-  
-  val cov_positive = Array.ofDim [Double] (n, n)
-  val cov_negative = Array.ofDim [Double] (n, n)
-  
-  for (i <- 0 until n)
-  {
-    cov_positive(i)(i) = (x0_positive.map (a => a(i)*a(i))).reduce (_ + _) / N
-    cov_negative(i)(i) = (x0_negative.map (a => a(i)*a(i))).reduce (_ + _) / N
-  
-    for (j <- 0 until i)
-    {
-      cov_positive(i)(j) = (x0_positive.map (a => a(i)*a(j))).reduce (_ + _) / N
-      cov_negative(i)(j) = (x0_negative.map (a => a(i)*a(j))).reduce (_ + _) / N
-      cov_positive(j)(i) = cov_positive(i)(j)
-      cov_negative(j)(i) = cov_negative(i)(j)
-    }
+    val N_positive = X_positive.count
+    val N_negative = X_negative.count
+
+    this.summary = QuadraticDiscrminantSufficientStatistics (
+                     N_positive + summary.N_positive,
+                     N_negative + summary.N_negative,
+                     X_sum_positive + summary.X_sum_positive,
+                     X_sum_negative + summary.X_sum_negative,
+                     X2_sum_positive + summary.X2_sum_positive,
+                     X2_sum_negative + summary.X2_sum_negative
+                   )
   }
+
+  val N = summary.N_positive + summary.N_negative
+  val n = max (summary.X_sum_positive.size, summary.X_sum_negative.size) // WHAT IF ONE OR THE OTHER IS NULL ??
   
-  val p_positive = N_positive / N.toDouble
-  val p_negative = N_negative / N.toDouble
+  val mean_positive = (1/summary.N_positive) * summary.X_sum_positive
+  val mean_negative = (1/summary.N_negative) * summary.X_sum_negative
+
+  val cov_positive = (1/summary.N_positive) * summary.X2_sum_positive - (mean_positive)^^2
+  val cov_negative = (1/summary.N_negative) * summary.X2_sum_negative - (mean_negative)^^2
   
   val cov_positive_inverse = computeInverse (sc, cov_positive)
   val cov_negative_inverse = computeInverse (sc, cov_negative)
 
+  val p_positive = summary.N_positive / summary.N.toDouble
+  val p_negative = summary.N_negative / summary.N.toDouble
+  
   def computeInverse (sc: SparkContext, a: Array [Array [Double]]): DenseMatrix =
   {
     val rows = sc.parallelize (a.map (r => Vectors.dense (r)))
@@ -73,11 +84,11 @@ class QuadraticDiscriminant (val sc: SparkContext, val x: RDD [LabeledPoint])
 
   def score (x: Vector): Double =
   {
-    val x_minus_mean_positive = subtract (x, summary_positive.mean)
-    val log_pxc_positive = -1/2.0 * dot (x_minus_mean_positive, cov_positive_inverse.multiply (x_minus_mean_positive))
+    val X_minus_mean_positive = subtract (x, colstats_positive.mean)
+    val log_pxc_positive = -1/2.0 * dot (X_minus_mean_positive, cov_positive_inverse.multiply (X_minus_mean_positive))
 
-    val x_minus_mean_negative = subtract (x, summary_negative.mean)
-    val log_pxc_negative = -1/2.0 * dot (x_minus_mean_negative, cov_negative_inverse.multiply (x_minus_mean_negative))
+    val X_minus_mean_negative = subtract (x, colstats_negative.mean)
+    val log_pxc_negative = -1/2.0 * dot (X_minus_mean_negative, cov_negative_inverse.multiply (X_minus_mean_negative))
 
     log_pxc_positive - log_pxc_negative
   }
