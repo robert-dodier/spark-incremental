@@ -51,3 +51,14 @@ read ("hey, enter something:") $
 histogram (norm_grad_xy\*, nclasses=20) $
 
 scatterplot (transpose (matrix (norm_xy\*, norm_grad_xy\*))) $
+
+xy0\* : map (lambda ([a1, b1, c1], [a1, b1]*(-c1)/(a1^2 + b1^2)), a00, b00, c0) $
+norm_xy0\* : map (lambda ([xy1], sqrt (xy1[1]^2 + xy1[2]^2)), xy0\*) $
+norm_grad_xy0\* : map (lambda ([a1, b1], sqrt (a1^2 + b1^2)), a00, b00) $
+
+histogram (norm_xy0\*, nclasses=20) $
+read ("hey, enter something:") $
+histogram (norm_grad_xy0\*, nclasses=20) $
+
+scatterplot (transpose (matrix (norm_xy0\*, norm_grad_xy0\*))) $
+
