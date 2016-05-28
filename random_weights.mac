@@ -1,0 +1,53 @@
+/* Let S(x) =  tanh(x) (similar results for S(x) = 1/(1 + exp(-x)))
+ * consider S(u) where u = a*x + b*y + c
+ * let (x*, y*) be the point on u = 0 s.t. it is closest to origin
+ * then x* = a*(-c/(a^2 + b^2)), y* = b*(-c/(a^2 + b^2)) (proof omitted)
+ * then norm((x*, y*)) = abs(c)/(a^2 + b^2)*norm((a, b)) = abs(c)/sqrt(a^2 + b^2) (1)
+ *
+ * grad(S(u)) w.r.t. x and y = (S'(u)*a, S'(u)*b) = S'(u)*(a, b)
+ * grad(S(u)) @ (x*, y*) = S'(0)*(a, b) = (a, b) (given S(x) = tanh(x))
+ * then norm(grad(S(u)) @ (x*, y*)) = sqrt(a^2 + b^2) (2)
+ * 
+ * let (a0, b0) be uniformly distributed on the unit circle
+ * let c0 have any distribution
+ * let d have any distirbution
+ * let (a, b) = d*(a0, b0)
+ * let c = d*c0
+ * then x* = d^2*(a0*(-c0))/(d^2*(a0^2 + b0^2))
+ * and  y* = d^2*(b0*(-c0))/(d^2*(a0^2 + b0^2))
+ * i.e. (x*, y*) = -c0*(a0, b0)
+ * and norm((x*, y*)) = abs(c0)*sqrt(a0^2 + b0^2) = abs(c0)
+ * furthermore norm(grad(S(u)) @ (x*, y*)) = abs(d)*sqrt(a0^2 + b0^2) = abs(d)
+ *
+ * therefore if we generate (a, b, c) as stated
+ * and compute (x*, y*) and norm(grad(S(u)) @ (x*, y*)) by (1) and (2)
+ * we should find that norm((x*, y*)) is distributed same as abs(c0)
+ * and norm(grad(S(u)) @ (x*, y*)) is distributed same as abs(d)
+ * and those two are independent
+ */
+
+n : 10000;
+
+load (distrib);
+a00 : random_normal (0, 1, n) $
+b00 : random_normal (0, 1, n) $
+h00 : map (lambda ([a1, b1], sqrt (a1^2 + b1^2)), a00, b00) $
+a0 : a00 / h00 $
+b0 : b00 / h00 $
+c0 : random_normal (0, 1, n) $
+d : random_normal (0, 1, n) $
+
+a : d * a0 $
+b : d * b0 $
+c : d * c0 $
+
+xy\* : map (lambda ([a1, b1, c1], [a1, b1]*(-c1)/(a1^2 + b1^2)), a, b, c) $
+norm_xy\* : map (lambda ([xy1], sqrt (xy1[1]^2 + xy1[2]^2)), xy\*) $
+norm_grad_xy\* : map (lambda ([a1, b1], sqrt (a1^2 + b1^2)), a, b) $
+
+load (descriptive) $
+histogram (norm_xy\*, nclasses=20) $
+read ("hey, enter something:") $
+histogram (norm_grad_xy\*, nclasses=20) $
+
+scatterplot (transpose (matrix (norm_xy\*, norm_grad_xy\*))) $
