@@ -23,3 +23,24 @@ Short answer
  *** for n.n., hidden variables might be the parameters for the hidden units
  *** for tree models, hidden variables might be the location of splits in different dimensions
  * Can we exploit s.s., for example, by fixing the missing variables and carrying out only the M step?
+
+Cross-validation and sufficient statistics
+ * CV = train on most of data, test on hold-out data; rotate blocks and repeat
+ * Sufficient statistics can help us calculate CV!
+ * Compute SS for each block and add them all up
+ * For each block, subtract SS from total and use what's left to compute model parameters
+ * ... and then test the model on the held-out block
+
+Conclusions and directions for further investigation
+ * Working with SS yields exactly the same result as working with all data
+ * ... so that can greatly speed up some common ML operations
+ * But SS exist only for some relatively simple models
+ * ... and for models in wide use (trees, neural networks), SS depend on hidden variables
+ * For trees, hidden variables = splitting planes + leaf counts
+ * ... we can approximate that pretty closely, so we can have an almost-exact incremental update
+ * For neural networks, hidden variables = parameters for hidden units
+ * ... I don't see any easy way to approximate those parameters
+ * ... but maybe SS could figure in a fast scheme for searching over random hidden units
+ * Low-hanging fruit:
+ * ... incremental update for Spark random forest
+ * ... including exploiting SS in CV
