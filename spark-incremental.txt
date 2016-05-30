@@ -44,3 +44,5 @@ Conclusions and directions for further investigation
  * Low-hanging fruit:
  * ... incremental update for Spark random forest
  * ... including exploiting SS in CV
+ * Exploiting SS for neural network training seems a little farther out,
+   and maybe less certain to yield something useful
