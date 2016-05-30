@@ -1,0 +1,15 @@
+/* generate n random trees */
+
+load (distrib);
+n : 100;
+
+xx0 : random_normal (0, 0.25, n) $
+yy0 : random_normal (-1, 0.5, n) $
+yy1 : random_normal (1.25, 0.1, n) $
+
+trees : map (lambda ([x0, y0, y1],
+                     buildq ([x0, y0, y1],
+                             lambda ([x, y], if x < x0 then if y < y0 then 0 else 1 else if y < y1 then 0 else 1))),
+             xx0, yy0, yy1) $
+
+trees_1d : map (lambda ([x0, y0, y1], buildq ([x0, y0, y1], lambda ([x], if x < x0 then y0 else y1))), xx0, yy0, yy1) $
