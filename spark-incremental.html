@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Title</title>
+    <title>Incremental updates for ML models</title>
     <meta charset="utf-8">
     <style>
       @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
@@ -21,11 +21,10 @@
 
 class: center, middle
 
-# Exact incremental updates for some machine learning models
+# Exact and approximate incremental updates for some machine learning models
 ## Robert Dodier
 
 ---
-
 # Problem statement
 --
 
@@ -44,7 +43,12 @@ class: center, middle
  * Under what circumstances can we work with just the new data?
 
 ---
+# Road map
 
+ * First let's look at a general theoretical answer
+ * Then we'll consider a simple model for which the theoretical answer is directly applicable
+ * Finally we'll expand our consideration to more complex models for which the theory is not directly applicable
+---
 # Short answer
 --
 
@@ -58,6 +62,54 @@ class: center, middle
 --
 
  * ... but some interesting models do: linear regression, logistic regression, quadratic discriminant
+
+---
+# Quadratic discriminant classifier
+
+--
+
+ * Given `\(p(x|c)\)` is a Gaussian density for each class `\(c\)`
+
+--
+
+ * then the surfaces of constant `\(p(c|x)\)` are conic sections
+
+--
+
+ * When both classes have the same covariance, the surfaces of constant `\(p(c|x)\)` are planes
+
+---
+## Scatterplots of samples from `\(p(x|c)\)`
+
+![samples scatterplot](qd_points.svg)
+
+---
+## Surfaces of constant `\(p(c|x)\)` w/ general covariance
+
+![p(c|x) contours](qd_contours.svg)
+
+---
+## Surfaces of constant `\(p(c|x)\)` w/ equal covariance
+
+![pooled-covariance p(c|x) contours](qd_pooled_contours.svg)
+
+---
+# Quadratic discriminant and sufficient statistics
+
+--
+
+ * s.s. for q.d. are the count, sum, and sum of squares for each class
+ * ... from those we can compute model parameters
+ 
+---
+# Scala code for q.d.
+
+```scala
+```
+
+---
+# Longer answer
+
 --
 
  * More speculatively, some models which have latent / hidden / missing variables
@@ -88,7 +140,6 @@ class: center, middle
  * Can we exploit s.s., for example, by fixing the missing variables and carrying out only the M step?
 
 ---
-
 # Cross-validation and sufficient statistics
 --
 
@@ -98,25 +149,24 @@ class: center, middle
  * Sufficient statistics can help us calculate CV!
 --
 
- * Compute SS for each block and add them all up
+ * Compute s.s. for each block and add them all up
 --
 
- * For each block, subtract SS from total and use what's left to compute model parameters
+ * For each block, subtract s.s. from total and use what's left to compute model parameters
 --
 
  * ... and then test the model on the held-out block
 
 ---
-
 # Conclusions and directions for further investigation
 --
 
- * Working with SS yields exactly the same result as working with all data
+ * Working with s.s. yields exactly the same result as working with all data
  * ... so that can greatly speed up some common ML operations
 --
 
- * But SS exist only for some relatively simple models
- * ... and for models in wide use (trees, neural networks), SS depend on hidden variables
+ * But s.s. exist only for some relatively simple models
+ * ... and for models in wide use (trees, neural networks), s.s. depend on hidden variables
 --
 
  * For trees, hidden variables = splitting planes + leaf counts
@@ -125,15 +175,15 @@ class: center, middle
 
  * For neural networks, hidden variables = parameters for hidden units
  * ... I don't see any easy way to approximate those parameters
- * ... but maybe SS could figure in a fast scheme for searching over random hidden units
+ * ... but maybe s.s. could figure in a fast scheme for searching over random hidden units
 --
 
  * Low-hanging fruit:
  * ... incremental update for Spark random forest
- * ... including exploiting SS in CV
+ * ... including exploiting s.s. in CV
 --
 
- * Exploiting SS for neural network training seems a little farther out,
+ * Exploiting s.s. for neural network training seems a little farther out,
    and maybe less certain to yield something useful
     </textarea>
     <script src="https://gnab.github.io/remark/downloads/remark-latest.min.js"></script>
