@@ -1,0 +1,13 @@
+load (distrib) $
+load (draw) $
+
+uv0:makelist([0, 1] + [1,1/2]*random_normal(0,1,2),1000) $
+uv1:makelist([2,0]+[1,2]*random_normal(0,1,2),1000) $
+draw2d (point_type= circle, color=blue, points (uv0),
+        point_type= circle, color=red, points (uv1),
+        proportional_axes = xy, terminal=svg, file_name="qd_points");
+
+uvc0 : map (lambda ([uv], [uv[1], uv[2], 0]), uv0) $
+uvc1 : map (lambda ([uv], [uv[1], uv[2], 1]), uv1) $
+uvc : append (uvc0, uvc1) $
+write_data (uvc, "xyc.data");
