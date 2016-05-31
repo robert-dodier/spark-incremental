@@ -1,10 +1,6 @@
-import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
-import org.apache.spark.mllib.linalg.{Vectors,Vector,Matrix,SingularValueDecomposition,DenseMatrix,DenseVector}
-import org.apache.spark.mllib.linalg.distributed.RowMatrix
 import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.mllib.stat.Statistics
-import breeze.linalg.{DenseVector,DenseMatrix,inv,det}
+import breeze.linalg.{inv,det}
     
 case class QuadraticDiscrminantSufficientStatistics (
   N1 : Integer,
