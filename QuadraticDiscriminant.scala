@@ -4,7 +4,7 @@ import org.apache.spark.mllib.linalg.{Vectors,Vector,Matrix,SingularValueDecompo
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.stat.Statistics
-import breeze.linalg.{DenseVector,DenseMatrix,inv}
+import breeze.linalg.{DenseVector,DenseMatrix,inv,det}
     
 case class QuadraticDiscrminantSufficientStatistics (
   N_positive : Integer,
@@ -52,6 +52,9 @@ class QuadraticDiscriminant (val summary: QuadraticDiscrminantSufficientStatisti
 
   val cov_positive = (1/summary.N_positive) * summary.X2_sum_positive - mean_positive * mean_positive.t
   val cov_negative = (1/summary.N_negative) * summary.X2_sum_negative - mean_positive * mean_positive.t
+
+  val cov_positive_det = cov_positive.det
+  val cov_negative_det = cov_negative.det
   
   val cov_positive_inverse = inv (cov_positive)
   val cov_negative_inverse = inv (cov_negative)
@@ -59,14 +62,28 @@ class QuadraticDiscriminant (val summary: QuadraticDiscrminantSufficientStatisti
   val p_positive = summary.N_positive / summary.N.toDouble
   val p_negative = summary.N_negative / summary.N.toDouble
   
-  def score (x: Vector): Double =
+  def score (x: org.apache.spark.mllib.linalg.Vector): Double =
   {
-    val X_minus_mean_positive = subtract (x, colstats_positive.mean)
-    val log_pxc_positive = -1/2.0 * dot (X_minus_mean_positive, cov_positive_inverse.multiply (X_minus_mean_positive))
+    val v = breeze.linalg.DenseVector (x.toArray)
+    val m = v.size
 
-    val X_minus_mean_negative = subtract (x, colstats_negative.mean)
-    val log_pxc_negative = -1/2.0 * dot (X_minus_mean_negative, cov_negative_inverse.multiply (X_minus_mean_negative))
+    val u1 = v - summary.mean_positive
+    val qf1 = u1.t * (summary.cov_positive_inverse * u1);
+    val log_pxc1 = -1/2.0 * qf1 - m/2.0 * Math.log (2*Math.PI) - 1/2.0 * Math.log (cov_positive_det)
 
-    log_pxc_positive - log_pxc_negative
+    val u0 = v - summary.mean_negative
+    val qf0 = u0.t * (summary.cov_negative_inverse * u0);
+    val log_pxc0 = -1/2.0 * qf0 - m/2.0 * Math.log (2*Math.PI) - 1/2.0 * Math.log (cov_negative_det)
+
+    val log_pc1 = Math.log (summary.p_positive)
+    val log_pc0 = Math.log (summary.p_negative)
+
+    // Note that p(c=1|x) = p(x|c=1) p(c=1) / p(x), and p(c=0|x) = p(x|c=0) p(c=0) / p(x).
+    // Therefore the posterior odds p(c=1|x) / p(c=0|x) = p(x|c=1) p(c=1) / (p(c=0|x) p(c=0))
+    // and therefore the posterior log-odds
+    // log(p(c=1|x) / p(c=0|x)) = log(p(x|c=1)) + log(p(c=1)) - log(p(x|c=0)) - log(p(c=0))
+    //                          = (log(p(x|c=1)) - log(p(x|c=0))) + (log(p(c=1)) - log(p(c=0))).
+
+    (log_pxc1 - log_pxc0) + (log_pc1 - log_pc0)
   }
 }
