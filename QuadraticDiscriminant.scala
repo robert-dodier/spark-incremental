@@ -11,7 +11,17 @@ case class QuadraticDiscrminantSufficientStatistics (
   X1_sum2 : breeze.linalg.DenseMatrix [Double],
   X0_sum2 : breeze.linalg.DenseMatrix [Double])
 
+object QuadraticDiscrminantSufficientStatistics {
+  def zeros (m: Integer) = {
+    val z = breeze.linalg.DenseVector.zeros [Double] (m)
+    val zz = breeze.linalg.DenseMatrix.zeros [Double] (m, m)
+    new QuadraticDiscrminantSufficientStatistics (0L, 0L, 0L, z, z, zz, zz)
+  }
+}
+
 class QuadraticDiscriminant (previousSummary: QuadraticDiscrminantSufficientStatistics, X: RDD [LabeledPoint]) {
+
+  def this (X: RDD [LabeledPoint]) = this (QuadraticDiscrminantSufficientStatistics.zeros (X.take (1)(0).features.size), X)
 
   val X1 = X.filter {case LabeledPoint (l, f) => l == 1.0}.map { case LabeledPoint (l, f) => breeze.linalg.DenseVector (f.toArray) }
   val X0 = X.filter {case LabeledPoint (l, f) => l != 1.0}.map { case LabeledPoint (l, f) => breeze.linalg.DenseVector (f.toArray) }
@@ -29,7 +39,7 @@ class QuadraticDiscriminant (previousSummary: QuadraticDiscrminantSufficientStat
 
   val N = N1 + N0
   
-  val summary = QuadraticDiscrminantSufficientStatistics (
+  val summary = new QuadraticDiscrminantSufficientStatistics (
                    N + previousSummary.N,
                    N1 + previousSummary.N1,
                    N0 + previousSummary.N0,
