@@ -7,76 +7,76 @@ import org.apache.spark.mllib.stat.Statistics
 import breeze.linalg.{DenseVector,DenseMatrix,inv,det}
     
 case class QuadraticDiscrminantSufficientStatistics (
-  N_positive : Integer,
-  N_negative : Integer,
-  X_sum_positive : breeze.linalg.DenseVector,
-  X_sum_negative : breeze.linalg.DenseVector,
-  X2_sum_positive : breeze.linalg.DenseMatrix,
-  X2_sum_negative : breeze.linalg.DenseMatrix)
+  N1 : Integer,
+  N0 : Integer,
+  X_sum1 : breeze.linalg.DenseVector,
+  X_sum0 : breeze.linalg.DenseVector,
+  X2_sum1 : breeze.linalg.DenseMatrix,
+  X2_sum0 : breeze.linalg.DenseMatrix)
 
 class QuadraticDiscriminant (val summary: QuadraticDiscrminantSufficientStatistics)
 {
   val summary = summary
 
   def this (val summary: QuadraticDiscrminantSufficientStatistics, val X: RDD [LabeledPoint]) {
-    val X_positive = X.filter {case LabeledPoint (l, f) => l == 1.0}.map { case LabeledPoint (l, f) => breeze.linalg.DenseVector (f.toArray) }
-    val X_negative = X.filter {case LabeledPoint (l, f) => l != 1.0}.map { case LabeledPoint (l, f) => breeze.linalg.DenseVector (f.toArray) }
+    val X1 = X.filter {case LabeledPoint (l, f) => l == 1.0}.map { case LabeledPoint (l, f) => breeze.linalg.DenseVector (f.toArray) }
+    val X0 = X.filter {case LabeledPoint (l, f) => l != 1.0}.map { case LabeledPoint (l, f) => breeze.linalg.DenseVector (f.toArray) }
   
-    val N_positive = X_positive.count
-    val N_negative = X_negative.count
+    val N1 = X1.count
+    val N0 = X0.count
 
-    val X_sum_positive = X_positive.reduce (_ + _)
-    val X_sum_negative = X_negative.reduce (_ + _)
+    val X_sum1 = X1.reduce (_ + _)
+    val X_sum0 = X0.reduce (_ + _)
 
-    val m = X_positive.take (1)(0).size
+    val m = X1.take (1)(0).size
     val z = breeze.linalg.DenseMatrix.zeros[Double] (m, m)
-    val X2_sum_positive = X_positive.aggregate (z) ((S, v) => S + v * v.t, (S, T) => S + T)
-    val X2_sum_negative = X_negative.aggregate (z) ((S, v) => S + v * v.t, (S, T) => S + T)
+    val X2_sum1 = X1.aggregate (z) ((S, v) => S + v * v.t, (S, T) => S + T)
+    val X2_sum0 = X0.aggregate (z) ((S, v) => S + v * v.t, (S, T) => S + T)
 
     this.summary = QuadraticDiscrminantSufficientStatistics (
-                     N_positive + summary.N_positive,
-                     N_negative + summary.N_negative,
-                     X_sum_positive + summary.X_sum_positive,
-                     X_sum_negative + summary.X_sum_negative,
-                     X2_sum_positive + summary.X2_sum_positive,
-                     X2_sum_negative + summary.X2_sum_negative
+                     N1 + summary.N1,
+                     N0 + summary.N0,
+                     X_sum1 + summary.X_sum1,
+                     X_sum0 + summary.X_sum0,
+                     X2_sum1 + summary.X2_sum1,
+                     X2_sum0 + summary.X2_sum0
                    )
   }
 
-  val N = summary.N_positive + summary.N_negative
+  val N = summary.N1 + summary.N0
   // HEY, IS THIS NEXT LINE STILL NEEDED ??
-  val n = max (summary.X_sum_positive.size, summary.X_sum_negative.size) // WHAT IF ONE OR THE OTHER IS NULL ??
+  val n = max (summary.X_sum1.size, summary.X_sum0.size) // WHAT IF ONE OR THE OTHER IS NULL ??
   
-  val mean_positive = (1/summary.N_positive) * summary.X_sum_positive
-  val mean_negative = (1/summary.N_negative) * summary.X_sum_negative
+  val mean1 = (1/summary.N1) * summary.X_sum1
+  val mean0 = (1/summary.N0) * summary.X_sum0
 
-  val cov_positive = (1/summary.N_positive) * summary.X2_sum_positive - mean_positive * mean_positive.t
-  val cov_negative = (1/summary.N_negative) * summary.X2_sum_negative - mean_positive * mean_positive.t
+  val cov1 = (1/summary.N1) * summary.X2_sum1 - mean1 * mean1.t
+  val cov0 = (1/summary.N0) * summary.X2_sum0 - mean1 * mean1.t
 
-  val cov_positive_det = cov_positive.det
-  val cov_negative_det = cov_negative.det
+  val cov1_det = cov1.det
+  val cov0_det = cov0.det
   
-  val cov_positive_inverse = inv (cov_positive)
-  val cov_negative_inverse = inv (cov_negative)
+  val cov1_inverse = inv (cov1)
+  val cov0_inverse = inv (cov0)
 
-  val p_positive = summary.N_positive / summary.N.toDouble
-  val p_negative = summary.N_negative / summary.N.toDouble
+  val p1 = summary.N1 / summary.N.toDouble
+  val p0 = summary.N0 / summary.N.toDouble
   
   def score (x: org.apache.spark.mllib.linalg.Vector): Double =
   {
     val v = breeze.linalg.DenseVector (x.toArray)
     val m = v.size
 
-    val u1 = v - summary.mean_positive
-    val qf1 = u1.t * (summary.cov_positive_inverse * u1);
-    val log_pxc1 = -1/2.0 * qf1 - m/2.0 * Math.log (2*Math.PI) - 1/2.0 * Math.log (cov_positive_det)
+    val u1 = v - summary.mean1
+    val qf1 = u1.t * (summary.cov1_inverse * u1);
+    val log_pxc1 = -1/2.0 * qf1 - m/2.0 * Math.log (2*Math.PI) - 1/2.0 * Math.log (cov1_det)
 
-    val u0 = v - summary.mean_negative
-    val qf0 = u0.t * (summary.cov_negative_inverse * u0);
-    val log_pxc0 = -1/2.0 * qf0 - m/2.0 * Math.log (2*Math.PI) - 1/2.0 * Math.log (cov_negative_det)
+    val u0 = v - summary.mean0
+    val qf0 = u0.t * (summary.cov0_inverse * u0);
+    val log_pxc0 = -1/2.0 * qf0 - m/2.0 * Math.log (2*Math.PI) - 1/2.0 * Math.log (cov0_det)
 
-    val log_pc1 = Math.log (summary.p_positive)
-    val log_pc0 = Math.log (summary.p_negative)
+    val log_pc1 = Math.log (summary.p1)
+    val log_pc0 = Math.log (summary.p0)
 
     // Note that p(c=1|x) = p(x|c=1) p(c=1) / p(x), and p(c=0|x) = p(x|c=0) p(c=0) / p(x).
     // Therefore the posterior odds p(c=1|x) / p(c=0|x) = p(x|c=1) p(c=1) / (p(c=0|x) p(c=0))
