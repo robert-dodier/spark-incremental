@@ -97,42 +97,42 @@ object QuadraticDiscriminant {
     val X_all = MLUtils.loadLibSVMFile (sc, "xyc.data-all-libsvm")
     val qd_all = new QuadraticDiscriminant (X_all)
 
-    val X_90pct = MLUtils.loadLibSVMFile (sc, "xyc.data-90%-libsvm")
-    val qd_90pct = new QuadraticDiscriminant (X_90pct)
-    val X_10pct = MLUtils.loadLibSVMFile (sc, "xyc.data-10%-libsvm")
-    val qd_10pct_only = new QuadraticDiscriminant (X_10pct)
-    val qd_10pct_plus_90pct = new QuadraticDiscriminant (qd_90pct.summary, X_10pct)
+    val X_99pct = MLUtils.loadLibSVMFile (sc, "xyc.data-99%-libsvm")
+    val qd_99pct = new QuadraticDiscriminant (X_99pct)
+    val X_1pct = MLUtils.loadLibSVMFile (sc, "xyc.data-1%-libsvm")
+    val qd_1pct_only = new QuadraticDiscriminant (X_1pct)
+    val qd_1pct_plus_99pct = new QuadraticDiscriminant (qd_99pct.summary, X_1pct)
 
-    println ("example: should find summaries of all and 10% + 90% are the same.")
+    println ("example: should find summaries of all and 1% + 99% are the same.")
     println ("example: qd_all.summary = ")
     println (qd_all.summary)
-    println ("example: qd_10pct_plus_90pct.summary = ")
-    println (qd_10pct_plus_90pct.summary)
-    println ("example: ... while summaries of 90% and 10% are different from each other and from the preceding.")
-    println ("example: qd_90pct.summary = ")
-    println (qd_90pct.summary)
-    println ("example: qd_10pct_only.summary = ")
-    println (qd_10pct_only.summary)
+    println ("example: qd_1pct_plus_99pct.summary = ")
+    println (qd_1pct_plus_99pct.summary)
+    println ("example: ... while summaries of 99% and 1% are different from each other and from the preceding.")
+    println ("example: qd_99pct.summary = ")
+    println (qd_99pct.summary)
+    println ("example: qd_1pct_only.summary = ")
+    println (qd_1pct_only.summary)
 
     println ("example: generate data for contour plots.")
 
     val ((x_ll_all, y_ll_all), (x_ur_all, y_ur_all)) = extract_corners (qd_all)
-    val ((x_ll_10pct_plus_90pct, y_ll_10pct_plus_90pct), (x_ur_10pct_plus_90pct, y_ur_10pct_plus_90pct)) = extract_corners (qd_10pct_plus_90pct)
-    val ((x_ll_90pct, y_ll_90pct), (x_ur_90pct, y_ur_90pct)) = extract_corners (qd_90pct)
-    val ((x_ll_10pct_only, y_ll_10pct_only), (x_ur_10pct_only, y_ur_10pct_only)) = extract_corners (qd_10pct_only)
+    val ((x_ll_1pct_plus_99pct, y_ll_1pct_plus_99pct), (x_ur_1pct_plus_99pct, y_ur_1pct_plus_99pct)) = extract_corners (qd_1pct_plus_99pct)
+    val ((x_ll_99pct, y_ll_99pct), (x_ur_99pct, y_ur_99pct)) = extract_corners (qd_99pct)
+    val ((x_ll_1pct_only, y_ll_1pct_only), (x_ur_1pct_only, y_ur_1pct_only)) = extract_corners (qd_1pct_only)
 
     // put all plots on same (x, y) grid
     // ll = lower left, ur = upper right
 
-    val x_ll = Math.min (Math.min (Math.min (x_ll_all, x_ll_10pct_plus_90pct), x_ll_90pct), x_ll_10pct_only)
-    val y_ll = Math.min (Math.min (Math.min (y_ll_all, y_ll_10pct_plus_90pct), y_ll_90pct), y_ll_10pct_only)
-    val x_ur = Math.max (Math.max (Math.max (x_ur_all, x_ur_10pct_plus_90pct), x_ur_90pct), x_ur_10pct_only)
-    val y_ur = Math.max (Math.max (Math.max (y_ur_all, y_ur_10pct_plus_90pct), y_ur_90pct), y_ur_10pct_only)
+    val x_ll = Math.min (Math.min (Math.min (x_ll_all, x_ll_1pct_plus_99pct), x_ll_99pct), x_ll_1pct_only)
+    val y_ll = Math.min (Math.min (Math.min (y_ll_all, y_ll_1pct_plus_99pct), y_ll_99pct), y_ll_1pct_only)
+    val x_ur = Math.max (Math.max (Math.max (x_ur_all, x_ur_1pct_plus_99pct), x_ur_99pct), x_ur_1pct_only)
+    val y_ur = Math.max (Math.max (Math.max (y_ur_all, y_ur_1pct_plus_99pct), y_ur_99pct), y_ur_1pct_only)
 
     generate_data (qd_all, x_ll, y_ll, x_ur, y_ur, 50, "qd_all.contour-data")
-    generate_data (qd_10pct_plus_90pct, x_ll, y_ll, x_ur, y_ur, 50, "qd_10pct_plus_90pct.contour-data")
-    generate_data (qd_90pct, x_ll, y_ll, x_ur, y_ur, 50, "qd_90pct.contour-data")
-    generate_data (qd_10pct_only, x_ll, y_ll, x_ur, y_ur, 50, "qd_10pct_only.contour-data")
+    generate_data (qd_1pct_plus_99pct, x_ll, y_ll, x_ur, y_ur, 50, "qd_1pct_plus_99pct.contour-data")
+    generate_data (qd_99pct, x_ll, y_ll, x_ur, y_ur, 50, "qd_99pct.contour-data")
+    generate_data (qd_1pct_only, x_ll, y_ll, x_ur, y_ur, 50, "qd_1pct_only.contour-data")
   }
 
   def extract_corners (qd: QuadraticDiscriminant): ((Double, Double), (Double, Double)) = {
