@@ -47,6 +47,7 @@ class: center, middle
 
  * First let's look at a general theoretical answer
  * Then we'll consider a simple model for which the theoretical answer is directly applicable
+ * ... and look at some Scala code for that
  * Finally we'll expand our consideration to more complex models for which the theory is not directly applicable
 ---
 # Short answer
@@ -185,6 +186,13 @@ class: center, middle
 
  * Exploiting s.s. for neural network training seems a little farther out,
    and maybe less certain to yield something useful
+
+# Just for fun
+
+ * Let's play "Spot the Monad"
+ * Looks like the s.s. update is sort of like a state monad
+ * ... add some stuff to s.s., output result and update s.s.
+ * Working out the details with lots of help from tpolecat
     </textarea>
     <script src="https://gnab.github.io/remark/downloads/remark-latest.min.js"></script>
     <script src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML&delayStartupUntil=configured" type="text/javascript"></script>
