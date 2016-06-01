@@ -113,5 +113,57 @@ object QuadraticDiscriminant {
     println (qd_90pct.summary)
     println ("example: qd_10pct_only.summary = ")
     println (qd_10pct_only.summary)
+
+    println ("example: generate data for contour plots.")
+
+    val ((x_ll_all, y_ll_all), (x_ur_all, y_ur_all)) = extract_corners (qd_all)
+    val ((x_ll_10pct_plus_90pct, y_ll_10pct_plus_90pct), (x_ur_10pct_plus_90pct, y_ur_10pct_plus_90pct)) = extract_corners (qd_10pct_plus_90pct)
+    val ((x_ll_90pct, y_ll_90pct), (x_ur_90pct, y_ur_90pct)) = extract_corners (qd_90pct)
+    val ((x_ll_10pct_only, y_ll_10pct_only), (x_ur_10pct_only, y_ur_10pct_only)) = extract_corners (qd_10pct_only)
+
+    // put all plots on same (x, y) grid
+    // ll = lower left, ur = upper right
+
+    val x_ll = Math.min (Math.min (Math.min (x_ll_all, x_ll_10pct_plus_90pct), x_ll_90pct), x_ll_10pct_only)
+    val y_ll = Math.min (Math.min (Math.min (y_ll_all, y_ll_10pct_plus_90pct), y_ll_90pct), y_ll_10pct_only)
+    val x_ur = Math.max (Math.max (Math.max (x_ur_all, x_ur_10pct_plus_90pct), x_ur_90pct), x_ur_10pct_only)
+    val y_ur = Math.max (Math.max (Math.max (y_ur_all, y_ur_10pct_plus_90pct), y_ur_90pct), y_ur_10pct_only)
+
+    generate_data (qd_all, x_ll, y_ll, x_ur, y_ur, 50, "qd_all.contour-data")
+    generate_data (qd_10pct_plus_90pct, x_ll, y_ll, x_ur, y_ur, 50, "qd_10pct_plus_90pct.contour-data")
+    generate_data (qd_90pct, x_ll, y_ll, x_ur, y_ur, 50, "qd_90pct.contour-data")
+    generate_data (qd_10pct_only, x_ll, y_ll, x_ur, y_ur, 50, "qd_10pct_only.contour-data")
+  }
+
+  def extract_corners (qd: QuadraticDiscriminant): ((Double, Double), (Double, Double)) = {
+    val x_ll = Math.min (qd.mean0(0) - 3*Math.sqrt(qd.cov0(0,0)), qd.mean1(0) - 3*Math.sqrt(qd.cov1(0,0)))
+    val y_ll = Math.min (qd.mean0(1) - 3*Math.sqrt(qd.cov0(1,1)), qd.mean1(1) - 3*Math.sqrt(qd.cov1(1,1)))
+    val x_ur = Math.max (qd.mean0(0) + 3*Math.sqrt(qd.cov0(0,0)), qd.mean1(0) + 3*Math.sqrt(qd.cov1(0,0)))
+    val y_ur = Math.max (qd.mean0(1) + 3*Math.sqrt(qd.cov0(1,1)), qd.mean1(1) + 3*Math.sqrt(qd.cov1(1,1)))
+    ((x_ll, y_ll), (x_ur, y_ur))
+  }
+
+  def generate_data (qd: QuadraticDiscriminant, x_ll: Double, y_ll: Double, x_ur: Double, y_ur: Double,  n: Integer, filename: String) = {
+    val n = 50
+    val dx = (x_ur - x_ll)/n
+    val dy = (y_ur - y_ll)/n
+    val out = new java.io.PrintStream (new java.io.FileOutputStream (filename))
+
+    out.print ("0")
+    for (i <- 0 to n)
+      out.print (", " + (x_ll + i*dx))
+    out.println
+
+    for (j <- 0 to n) {
+      val y = y_ll + j*dy
+      out.print (y)
+      for (i <- 0 to n) {
+        val x = x_ll + i*dx
+        val p = qd.score (org.apache.spark.mllib.linalg.Vectors.dense (x, y))
+        out.print (", " + p)
+      }
+      out.println
+    }
+    out.close
   }
 }
