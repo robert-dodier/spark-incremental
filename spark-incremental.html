@@ -109,6 +109,37 @@ class: center, middle
 ```
 
 ---
+# A test program
+
+```scala
+  val X_all = MLUtils.loadLibSVMFile (sc, "xyc.data-all-libsvm")
+  val qd_all = new QuadraticDiscriminant (X_all)
+
+  val X_99pct = MLUtils.loadLibSVMFile (sc, "xyc.data-99%-libsvm")
+  val qd_99pct = new QuadraticDiscriminant (X_99pct)
+
+  val X_1pct = MLUtils.loadLibSVMFile (sc, "xyc.data-1%-libsvm")
+  val qd_1pct_only = new QuadraticDiscriminant (X_1pct)
+
+  val qd_1pct_plus_99pct = new QuadraticDiscriminant (qd_99pct.summary, X_1pct)
+```
+
+---
+# Output from test program
+
+![posterior log-odds, 1% data only](qd_1pct_only.svg)
+
+---
+# Output from test program
+
+![posterior log-odds, 1% data + 99% s.s.](qd_1pct_plus_99pct.svg)
+
+---
+# Output from test program
+
+![posterior log-odds, all data](qd_all.svg)
+
+---
 # Longer answer
 
 --
@@ -187,6 +218,7 @@ class: center, middle
  * Exploiting s.s. for neural network training seems a little farther out,
    and maybe less certain to yield something useful
 
+---
 # Just for fun
 
  * Let's play "Spot the Monad"
