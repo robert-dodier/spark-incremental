@@ -89,3 +89,29 @@ class QuadraticDiscriminant (previousSummary: QuadraticDiscrminantSufficientStat
     (log_pxc1 - log_pxc0) + (log_pc1 - log_pc0)
   }
 }
+
+object QuadraticDiscriminant {
+
+  def example (sc: org.apache.spark.SparkContext) = {
+    import org.apache.spark.mllib.util.MLUtils
+    val X_all = MLUtils.loadLibSVMFile (sc, "xyc.data-all-libsvm")
+    val qd_all = new QuadraticDiscriminant (X_all)
+
+    val X_90pct = MLUtils.loadLibSVMFile (sc, "xyc.data-90%-libsvm")
+    val qd_90pct = new QuadraticDiscriminant (X_90pct)
+    val X_10pct = MLUtils.loadLibSVMFile (sc, "xyc.data-10%-libsvm")
+    val qd_10pct_only = new QuadraticDiscriminant (X_10pct)
+    val qd_10pct_plus_90pct = new QuadraticDiscriminant (qd_90pct.summary, X_10pct)
+
+    println ("example: should find summaries of all and 10% + 90% are the same.")
+    println ("example: qd_all.summary = ")
+    println (qd_all.summary)
+    println ("example: qd_10pct_plus_90pct.summary = ")
+    println (qd_10pct_plus_90pct.summary)
+    println ("example: ... while summaries of 90% and 10% are different from each other and from the preceding.")
+    println ("example: qd_90pct.summary = ")
+    println (qd_90pct.summary)
+    println ("example: qd_10pct_only.summary = ")
+    println (qd_10pct_only.summary)
+  }
+}
