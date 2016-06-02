@@ -13,3 +13,14 @@ trees : map (lambda ([x0, y0, y1],
              xx0, yy0, yy1) $
 
 trees_1d : map (lambda ([x0, y0, y1], buildq ([x0, y0, y1], lambda ([x], if x < x0 then y0 else y1))), xx0, yy0, yy1) $
+
+plot2d (first (trees_1d), [x, -2, 2], [y, -2.5, 1.5], [gnuplot_preamble, "set size ratio -1"],
+  [gnuplot_term, svg], [gnuplot_out_file, "trees_1d-first.svg"], [legend, false]);
+
+plot2d (trees_1d, [x, -2, 2], [y, -2.5, 1.5], [gnuplot_preamble, "set size ratio -1"],
+  [gnuplot_term, svg], [gnuplot_out_file, "trees_1d-all.svg"], [legend, false]);
+
+votes (x, y) := lsum (f(x, y), f, trees);
+
+contour_plot (votes, [x, -2, 2], [y, -2.5, 1.5], [grid, 50, 50], [gnuplot_preamble, "set size ratio -1"],
+  [gnuplot_term, svg], [gnuplot_out_file, "trees-voting-contours.svg"]);
