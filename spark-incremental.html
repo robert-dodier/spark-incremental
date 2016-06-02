@@ -50,7 +50,7 @@ class: center, middle
  * ... and look at some Scala code for that
  * Finally we'll expand our consideration to more complex models for which the theory is not directly applicable
 ---
-# Short answer
+# Theoretical answer
 --
 
  * Exact incremental update == model has "sufficient statistics"
@@ -291,11 +291,13 @@ which uses cross entropy as the goodness of fit:
   }
 ```
 ---
-# Longer answer
+# Casting the net wider
+
+What can be done when a model does not have sufficient statistics?
 
 --
 
- * More speculatively, some models which have latent / hidden / missing variables
+ * Some models have latent / hidden / missing variables
 --
 
    * often trained with expectation-maximization algorithms: E step = estimate missing variables,
@@ -321,6 +323,44 @@ which uses cross entropy as the goodness of fit:
 --
 
  * Can we exploit s.s., for example, by fixing the missing variables and carrying out only the M step?
+
+---
+# Tree-structured models and sufficient statistics
+
+ * A tree classifier is just a function with a lot of if-then-else
+ * ... e.g. `if x + 2*y > 0 then if x/2 - y > 0 then 0.2 else 0.4 else if y - 3*x > 0 then ...`
+
+ * Trees typically have class boundaries that are jaggedy lines
+
+---
+ * "Random forests" are a specific implementation of tree-structured models.
+
+ * RF split on just one variable at a time, so the boundaries are "axis aligned".
+
+![single tree class boundary](trees_1d-first.svg)
+
+---
+ * RF smooth out the boundaries by constructing bootstrap samples
+
+![100 trees class boundaries](trees_1d-all.svg)
+
+---
+ * ... and then "voting" on the the output (1 or 0)
+
+![100 trees voting](trees-voting-contours.svg)
+
+---
+ * RF splitting heuristic is based on "impurity": try to split so that impurity is minimized on either side.
+
+--
+
+ * Therefore sufficient statistics are whatever's needed to compute impurity. 
+   ... this amounts to an approximation of the per-variable distribution, e.g. a histogram
+
+--
+
+ * Spark RF implementation already makes use of that!
+   ... only for one-time training, not for incremental update or cross validation. But machinery is in place already.
 
 ---
 # Conclusions and directions for further investigation
