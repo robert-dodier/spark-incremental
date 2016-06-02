@@ -103,39 +103,147 @@ class: center, middle
  * ... from those we can compute model parameters
  
 ---
-# Scala code for q.d.
+# Scala code for quadratic discriminant
+
+All the code, data, scripts, and documents are on Github:
+[robert-dodier/spark-incremental](https://github.com/robert-dodier/spark-incremental)
+
+Here's something to keep sufficient statistics.
 
 ```scala
+case class QuadraticDiscrminantSufficientStatistics (
+  N : Long,
+  N1 : Long,
+  N0 : Long,
+  X1_sum : breeze.linalg.DenseVector [Double],
+  X0_sum : breeze.linalg.DenseVector [Double],
+  X1_sum2 : breeze.linalg.DenseMatrix [Double],
+  X0_sum2 : breeze.linalg.DenseMatrix [Double])
 ```
+
+---
+Compute sufficient statistics for new data. 
+
+```scala
+  val N1 = X1.count
+  val N0 = X0.count
+
+  val X1_sum = X1.reduce (_ + _)
+  val X0_sum = X0.reduce (_ + _)
+
+  val m = X1.take (1)(0).size
+  val z = breeze.linalg.DenseMatrix.zeros[Double] (m, m)
+  val X1_sum2 = X1.aggregate (z) ((S, v) => S + v * v.t, (S, T) => S + T)
+  val X0_sum2 = X0.aggregate (z) ((S, v) => S + v * v.t, (S, T) => S + T)
+```
+
+The `\((i, j)\)` element of the correlation matrices is defined as `\(\sum_k x_{ki} x_{kj}\)`,
+i.e. an inner product on columns `\(i\)` and `\(j\)`.
+
+Note that the outer product of row `\(k\)` with itself is a matrix with `\((i, j)\)` element `\(x_{ki} x_{kj}\)`.
+So just add up all those products to get the correlation matrix.
+
+This is perhaps the most concise way to phrase the computation, given that RDD's favor row operations.
+
+---
+Update the sufficient statistics with new summary + previous summary.
+
+```scala
+  val N = N1 + N0
+
+  val summary = new QuadraticDiscrminantSufficientStatistics (
+                   N + previousSummary.N,
+                   N1 + previousSummary.N1,
+                   N0 + previousSummary.N0,
+                   X1_sum + previousSummary.X1_sum,
+                   X0_sum + previousSummary.X0_sum,
+                   X1_sum2 + previousSummary.X1_sum2,
+                   X0_sum2 + previousSummary.X0_sum2
+                 )
+```
+
+---
+Compute parameters for the quadratic discriminant model from sufficient statistics.
+
+```scala
+  val mean1 = (1.0/summary.N1) * summary.X1_sum
+  val mean0 = (1.0/summary.N0) * summary.X0_sum
+
+  val cov1 = (1.0/summary.N1) * summary.X1_sum2 - mean1 * mean1.t
+  val cov0 = (1.0/summary.N0) * summary.X0_sum2 - mean0 * mean0.t
+
+  val cov1_det = det (cov1)
+  val cov0_det = det (cov0)
+
+  val cov1_inv = inv (cov1)
+  val cov0_inv = inv (cov0)
+
+  val pc1 = summary.N1 / summary.N.toDouble
+  val pc0 = summary.N0 / summary.N.toDouble
+```
+
+The parameters are the mean, covariance, and prior class probability for each of two classes (1 and 0).
+
+Cache the determinant and inverse of the covariance since those are needed to score a new input.
+
+---
+Scoring function. This is the posterior log-odds `\(\log(p(c=1|x)/p(c=0|x))\)` for a new input `\(x\)`.
+
+```scala
+  def score (x: org.apache.spark.mllib.linalg.Vector): Double = {
+
+    val v = breeze.linalg.DenseVector (x.toArray)
+    val m = v.size
+
+    val u1 = v - mean1
+    val qf1 = u1.t * (cov1_inv * u1);
+    val log_pxc1 = -1/2.0 * qf1 - m/2.0 * Math.log (2*Math.PI)
+                     - 1/2.0 * Math.log (cov1_det)
+
+    val u0 = v - mean0
+    val qf0 = u0.t * (cov0_inv * u0);
+    val log_pxc0 = -1/2.0 * qf0 - m/2.0 * Math.log (2*Math.PI)
+                     - 1/2.0 * Math.log (cov0_det)
+
+    val log_pc1 = Math.log (pc1)
+    val log_pc0 = Math.log (pc0)
+
+    (log_pxc1 - log_pxc0) + (log_pc1 - log_pc0)
+  }
+```
+
+For each class `\(c'\)`, `\(p(c=c'|x) = p(x|c=c') p(c')/p(x)\)`
+with `\(p(x|c=c') = (2\pi)^{-m/2} |\Sigma_{c'}|^{-1/2} \exp(-\frac{1}{2} (x - \mu_{c'})^T \Sigma_{c'}^{-1} (x - \mu_{c'}))\)`.
+
+At this point we have all that's needed for a basic implementation.
 
 ---
 # A test program
 
 ```scala
-  val X_all = MLUtils.loadLibSVMFile (sc, "xyc.data-all-libsvm")
-  val qd_all = new QuadraticDiscriminant (X_all)
+    val X_all = MLUtils.loadLibSVMFile (sc, "xyc.data-all-libsvm")
+    val qd_all = new QuadraticDiscriminant (X_all)
 
-  val X_99pct = MLUtils.loadLibSVMFile (sc, "xyc.data-99%-libsvm")
-  val qd_99pct = new QuadraticDiscriminant (X_99pct)
+    val X_99pct = MLUtils.loadLibSVMFile (sc, "xyc.data-99%-libsvm")
+    val qd_99pct = new QuadraticDiscriminant (X_99pct)
 
-  val X_1pct = MLUtils.loadLibSVMFile (sc, "xyc.data-1%-libsvm")
-  val qd_1pct_only = new QuadraticDiscriminant (X_1pct)
+    val X_1pct = MLUtils.loadLibSVMFile (sc, "xyc.data-1%-libsvm")
+    val qd_1pct_only = new QuadraticDiscriminant (X_1pct)
 
-  val qd_1pct_plus_99pct = new QuadraticDiscriminant (qd_99pct.summary, X_1pct)
+    val qd_1pct_plus_99pct = new QuadraticDiscriminant (qd_99pct.summary, X_1pct)
 ```
-
 ---
-# Output from test program
+# Output w/ only 1% of data
 
 ![posterior log-odds, 1% data only](qd_1pct_only.svg)
 
 ---
-# Output from test program
+# Output w/ 1% + summary of 99%
 
 ![posterior log-odds, 1% data + 99% s.s.](qd_1pct_plus_99pct.svg)
 
 ---
-# Output from test program
+# Output w/ all data
 
 ![posterior log-odds, all data](qd_all.svg)
 
@@ -193,7 +301,7 @@ class: center, middle
 # Conclusions and directions for further investigation
 --
 
- * Working with s.s. yields exactly the same result as working with all data
+ * Working with sufficient statistics yields exactly the same result as working with all data
  * ... so that can greatly speed up some common ML operations
 --
 
@@ -222,7 +330,7 @@ class: center, middle
 # Just for fun
 
  * Let's play "Spot the Monad"
- * Looks like the s.s. update is sort of like a state monad
+ * Looks like the sufficient statistics update is sort of like a state monad
  * ... add some stuff to s.s., output result and update s.s.
  * Working out the details with lots of help from tpolecat
     </textarea>
