@@ -40,11 +40,13 @@ object QuadraticDiscriminantSufficientStatistics {
   }
 }
 
-class QuadraticDiscriminant (previousSummary: QuadraticDiscriminantSufficientStatistics, X: RDD [LabeledPoint]) {
+class QuadraticDiscriminant (previousSummary: QuadraticDiscriminantSufficientStatistics, X: RDD [LabeledPoint])
+  extends Serializable {
 
   def this (X: RDD [LabeledPoint]) = this (QuadraticDiscriminantSufficientStatistics.zeros (X.take (1)(0).features.size), X)
 
-  val summary = previousSummary.add (QuadraticDiscriminant.sufficientStatistics (X))
+  val summary = if (X.count > 0) previousSummary.add (QuadraticDiscriminant.sufficientStatistics (X))
+                else previousSummary
 
   val mean1 = (1.0/summary.N1) * summary.X1_sum
   val mean0 = (1.0/summary.N0) * summary.X0_sum
