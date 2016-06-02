@@ -106,17 +106,17 @@ object QuadraticDiscriminant {
   
     val N1 = X1.count
     val N0 = X0.count
-  
-    val X1_sum = X1.reduce (_ + _)
-    val X0_sum = X0.reduce (_ + _)
-  
-    val m = X1.take (1)(0).size
-    val z = breeze.linalg.DenseMatrix.zeros[Double] (m, m)
-    val X1_sum2 = X1.aggregate (z) ((S, v) => S + v * v.t, (S, T) => S + T)
-    val X0_sum2 = X0.aggregate (z) ((S, v) => S + v * v.t, (S, T) => S + T)
-  
     val N = N1 + N0
     
+    val m = X.take (1)(0).features.size
+    val z = breeze.linalg.DenseVector.zeros[Double] (m)
+    val X1_sum = X1.aggregate (z) (_ + _, _ + _)
+    val X0_sum = X0.aggregate (z) (_ + _, _ + _)
+  
+    val zz = breeze.linalg.DenseMatrix.zeros[Double] (m, m)
+    val X1_sum2 = X1.aggregate (zz) ((S, v) => S + v * v.t, (S, T) => S + T)
+    val X0_sum2 = X0.aggregate (zz) ((S, v) => S + v * v.t, (S, T) => S + T)
+  
     QuadraticDiscriminantSufficientStatistics (N, N1, N0, X1_sum, X0_sum, X1_sum2, X0_sum2)
   }
 
