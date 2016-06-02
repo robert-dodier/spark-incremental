@@ -151,7 +151,7 @@ Update the sufficient statistics with new summary + previous summary.
 ```scala
   val N = N1 + N0
 
-  val summary = new QuadraticDiscrminantSufficientStatistics (
+  val summary = QuadraticDiscrminantSufficientStatistics (
                    N + previousSummary.N,
                    N1 + previousSummary.N1,
                    N0 + previousSummary.N0,
