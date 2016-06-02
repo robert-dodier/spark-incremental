@@ -9,13 +9,34 @@ case class QuadraticDiscrminantSufficientStatistics (
   X1_sum : breeze.linalg.DenseVector [Double],
   X0_sum : breeze.linalg.DenseVector [Double],
   X1_sum2 : breeze.linalg.DenseMatrix [Double],
-  X0_sum2 : breeze.linalg.DenseMatrix [Double])
+  X0_sum2 : breeze.linalg.DenseMatrix [Double]) {
+
+  def add (s: QuadraticDiscrminantSufficientStatistics) = {
+    QuadraticDiscrminantSufficientStatistics (N + s.N,
+                                              N1 + s.N1,
+                                              N0 + s.N0,
+                                              X1_sum + s.X1_sum,
+                                              X0_sum + s.X0_sum,
+                                              X1_sum2 + s.X1_sum2,
+                                              X0_sum2 + s.X0_sum2)
+  }
+
+  def subtract (s: QuadraticDiscrminantSufficientStatistics) = {
+    QuadraticDiscrminantSufficientStatistics (N - s.N,
+                                              N1 - s.N1,
+                                              N0 - s.N0,
+                                              X1_sum - s.X1_sum,
+                                              X0_sum - s.X0_sum,
+                                              X1_sum2 - s.X1_sum2,
+                                              X0_sum2 - s.X0_sum2)
+  }
+}
 
 object QuadraticDiscrminantSufficientStatistics {
   def zeros (m: Integer) = {
     val z = breeze.linalg.DenseVector.zeros [Double] (m)
     val zz = breeze.linalg.DenseMatrix.zeros [Double] (m, m)
-    new QuadraticDiscrminantSufficientStatistics (0L, 0L, 0L, z, z, zz, zz)
+    QuadraticDiscrminantSufficientStatistics (0L, 0L, 0L, z, z, zz, zz)
   }
 }
 
@@ -23,31 +44,7 @@ class QuadraticDiscriminant (previousSummary: QuadraticDiscrminantSufficientStat
 
   def this (X: RDD [LabeledPoint]) = this (QuadraticDiscrminantSufficientStatistics.zeros (X.take (1)(0).features.size), X)
 
-  val X1 = X.filter {case LabeledPoint (l, f) => l == 1.0}.map { case LabeledPoint (l, f) => breeze.linalg.DenseVector (f.toArray) }
-  val X0 = X.filter {case LabeledPoint (l, f) => l != 1.0}.map { case LabeledPoint (l, f) => breeze.linalg.DenseVector (f.toArray) }
-
-  val N1 = X1.count
-  val N0 = X0.count
-
-  val X1_sum = X1.reduce (_ + _)
-  val X0_sum = X0.reduce (_ + _)
-
-  val m = X1.take (1)(0).size
-  val z = breeze.linalg.DenseMatrix.zeros[Double] (m, m)
-  val X1_sum2 = X1.aggregate (z) ((S, v) => S + v * v.t, (S, T) => S + T)
-  val X0_sum2 = X0.aggregate (z) ((S, v) => S + v * v.t, (S, T) => S + T)
-
-  val N = N1 + N0
-  
-  val summary = new QuadraticDiscrminantSufficientStatistics (
-                   N + previousSummary.N,
-                   N1 + previousSummary.N1,
-                   N0 + previousSummary.N0,
-                   X1_sum + previousSummary.X1_sum,
-                   X0_sum + previousSummary.X0_sum,
-                   X1_sum2 + previousSummary.X1_sum2,
-                   X0_sum2 + previousSummary.X0_sum2
-                 )
+  val summary = previousSummary.add (QuadraticDiscriminant.sufficientStatistics (X))
 
   val mean1 = (1.0/summary.N1) * summary.X1_sum
   val mean0 = (1.0/summary.N0) * summary.X0_sum
@@ -88,9 +85,49 @@ class QuadraticDiscriminant (previousSummary: QuadraticDiscrminantSufficientStat
 
     (log_pxc1 - log_pxc0) + (log_pc1 - log_pc0)
   }
+
+  def crossEntropy (x: LabeledPoint): Double = {
+    val log_odds = score (x.features)
+    val log_pc1x = - Math.log (1 + Math.exp (- log_odds))
+    val log_pc0x = - Math.log (1 + Math.exp (+ log_odds))
+    - x.label * log_pc1x - (1 - x.label) * log_pc0x
+  }
+
+  def crossEntropy (X: RDD[LabeledPoint]): Double = {
+    X.map (x => crossEntropy (x)).sum / X.count
+  }
 }
 
 object QuadraticDiscriminant {
+
+  def sufficientStatistics (X: RDD [LabeledPoint]): QuadraticDiscrminantSufficientStatistics = {
+    val X1 = X.filter {case LabeledPoint (l, f) => l == 1.0}.map { case LabeledPoint (l, f) => breeze.linalg.DenseVector (f.toArray) }
+    val X0 = X.filter {case LabeledPoint (l, f) => l != 1.0}.map { case LabeledPoint (l, f) => breeze.linalg.DenseVector (f.toArray) }
+  
+    val N1 = X1.count
+    val N0 = X0.count
+  
+    val X1_sum = X1.reduce (_ + _)
+    val X0_sum = X0.reduce (_ + _)
+  
+    val m = X1.take (1)(0).size
+    val z = breeze.linalg.DenseMatrix.zeros[Double] (m, m)
+    val X1_sum2 = X1.aggregate (z) ((S, v) => S + v * v.t, (S, T) => S + T)
+    val X0_sum2 = X0.aggregate (z) ((S, v) => S + v * v.t, (S, T) => S + T)
+  
+    val N = N1 + N0
+    
+    QuadraticDiscrminantSufficientStatistics (N, N1, N0, X1_sum, X0_sum, X1_sum2, X0_sum2)
+  }
+
+  def crossValidation (X: RDD [LabeledPoint], n: Integer) = {
+    val X_split = X.randomSplit (Array.fill[Double](n)(1.0))
+    val summaries = X_split.map (rdd => sufficientStatistics (rdd))
+    val all_summary = summaries.reduce ((a, b) => a.add (b))
+
+    val empty = X.context.emptyRDD [LabeledPoint]
+    val foo = X_split.zip (summaries).map { case (rdd, s) => (new QuadraticDiscriminant (all_summary.subtract (s), empty)).crossEntropy (rdd) }
+  }
 
   def example (sc: org.apache.spark.SparkContext) = {
     import org.apache.spark.mllib.util.MLUtils
