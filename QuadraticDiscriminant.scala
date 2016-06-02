@@ -94,7 +94,7 @@ class QuadraticDiscriminant (previousSummary: QuadraticDiscrminantSufficientStat
   }
 
   def crossEntropy (X: RDD[LabeledPoint]): Double = {
-    X.map (x => crossEntropy (x)).sum / X.count
+    X.map (x => crossEntropy (x)).sum
   }
 }
 
@@ -120,13 +120,16 @@ object QuadraticDiscriminant {
     QuadraticDiscrminantSufficientStatistics (N, N1, N0, X1_sum, X0_sum, X1_sum2, X0_sum2)
   }
 
-  def crossValidation (X: RDD [LabeledPoint], n: Integer) = {
+  def crossValidation (X: RDD [LabeledPoint], n: Integer): Double = {
     val X_split = X.randomSplit (Array.fill[Double](n)(1.0))
     val summaries = X_split.map (rdd => sufficientStatistics (rdd))
     val all_summary = summaries.reduce ((a, b) => a.add (b))
 
     val empty = X.context.emptyRDD [LabeledPoint]
-    val foo = X_split.zip (summaries).map { case (rdd, s) => (new QuadraticDiscriminant (all_summary.subtract (s), empty)).crossEntropy (rdd) }
+    X_split.zip (summaries)
+      .map { case (rdd, s) => (new QuadraticDiscriminant (all_summary.subtract (s), empty))
+                                .crossEntropy (rdd) }
+      .sum
   }
 
   def example (sc: org.apache.spark.SparkContext) = {
