@@ -241,38 +241,6 @@ At this point we have all that's needed for a basic implementation.
 ![posterior log-odds, all data](qd_all.svg)
 
 ---
-# Longer answer
-
---
-
- * More speculatively, some models which have latent / hidden / missing variables
---
-
-   * often trained with expectation-maximization algorithms: E step = estimate missing variables,
-    M step = maximum likelihood given missing
---
-
-   * M step may have sufficient statistics
---
-
-   * ... so the model "almost" or "sort of" has sufficient statistics
---
-
-   * e.g. Gaussian mixture, topic-word models
---
-
-   * maybe neural networks and tree-structured models as well?
---
-
-     * for n.n., hidden variables might be the parameters for the hidden units
---
-
-     * for tree models, hidden variables might be the location of splits in different dimensions
---
-
- * Can we exploit s.s., for example, by fixing the missing variables and carrying out only the M step?
-
----
 # Cross-validation and sufficient statistics
 --
 
@@ -322,6 +290,38 @@ which uses cross entropy as the goodness of fit:
     X.map (x => crossEntropy (x)).sum
   }
 ```
+---
+# Longer answer
+
+--
+
+ * More speculatively, some models which have latent / hidden / missing variables
+--
+
+   * often trained with expectation-maximization algorithms: E step = estimate missing variables,
+    M step = maximum likelihood given missing
+--
+
+   * M step may have sufficient statistics
+--
+
+   * ... so the model "almost" or "sort of" has sufficient statistics
+--
+
+   * e.g. Gaussian mixture, topic-word models
+--
+
+   * maybe neural networks and tree-structured models as well?
+--
+
+     * for n.n., hidden variables might be the parameters for the hidden units
+--
+
+     * for tree models, hidden variables might be the location of splits in different dimensions
+--
+
+ * Can we exploit s.s., for example, by fixing the missing variables and carrying out only the M step?
+
 ---
 # Conclusions and directions for further investigation
 --
