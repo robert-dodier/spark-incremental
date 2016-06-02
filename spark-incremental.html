@@ -111,7 +111,7 @@ All the code, data, scripts, and documents are on Github:
 Here's something to keep sufficient statistics.
 
 ```scala
-case class QuadraticDiscrminantSufficientStatistics (
+case class QuadraticDiscriminantSufficientStatistics (
   N : Long,
   N1 : Long,
   N0 : Long,
@@ -151,7 +151,7 @@ Update the sufficient statistics with new summary + previous summary.
 ```scala
   val N = N1 + N0
 
-  val summary = QuadraticDiscrminantSufficientStatistics (
+  val summary = QuadraticDiscriminantSufficientStatistics (
                    N + previousSummary.N,
                    N1 + previousSummary.N1,
                    N0 + previousSummary.N0,
