@@ -118,23 +118,33 @@ case class QuadraticDiscriminantSufficientStatistics (
   X1_sum : breeze.linalg.DenseVector [Double],
   X0_sum : breeze.linalg.DenseVector [Double],
   X1_sum2 : breeze.linalg.DenseMatrix [Double],
-  X0_sum2 : breeze.linalg.DenseMatrix [Double])
+  X0_sum2 : breeze.linalg.DenseMatrix [Double]) {
+
+  def add (s: QuadraticDiscriminantSufficientStatistics) = { ... }
+
+  def subtract (s: QuadraticDiscriminantSufficientStatistics) = { ... }
+}
 ```
 
 ---
 Compute sufficient statistics for new data. 
 
 ```scala
-  val N1 = X1.count
-  val N0 = X0.count
+    val X1 = X.filter {case LabeledPoint (l, f) => l == 1.0} ...
+    val X0 = X.filter {case LabeledPoint (l, f) => l != 1.0} ...
 
-  val X1_sum = X1.reduce (_ + _)
-  val X0_sum = X0.reduce (_ + _)
+    val N1 = X1.count
+    val N0 = X0.count
+    val N = N1 + N0
 
-  val m = X1.take (1)(0).size
-  val z = breeze.linalg.DenseMatrix.zeros[Double] (m, m)
-  val X1_sum2 = X1.aggregate (z) ((S, v) => S + v * v.t, (S, T) => S + T)
-  val X0_sum2 = X0.aggregate (z) ((S, v) => S + v * v.t, (S, T) => S + T)
+    val m = X.take (1)(0).features.size
+    val z = breeze.linalg.DenseVector.zeros[Double] (m)
+    val X1_sum = X1.aggregate (z) (_ + _, _ + _)
+    val X0_sum = X0.aggregate (z) (_ + _, _ + _)
+
+    val zz = breeze.linalg.DenseMatrix.zeros[Double] (m, m)
+    val X1_sum2 = X1.aggregate (zz) ((S, v) => S + v * v.t, (S, T) => S + T)
+    val X0_sum2 = X0.aggregate (zz) ((S, v) => S + v * v.t, (S, T) => S + T)
 ```
 
 The `\((i, j)\)` element of the correlation matrices is defined as `\(\sum_k x_{ki} x_{kj}\)`,
@@ -144,23 +154,6 @@ Note that the outer product of row `\(k\)` with itself is a matrix with `\((i, j
 So just add up all those products to get the correlation matrix.
 
 This is perhaps the most concise way to phrase the computation, given that RDD's favor row operations.
-
----
-Update the sufficient statistics with new summary + previous summary.
-
-```scala
-  val N = N1 + N0
-
-  val summary = QuadraticDiscriminantSufficientStatistics (
-                   N + previousSummary.N,
-                   N1 + previousSummary.N1,
-                   N0 + previousSummary.N0,
-                   X1_sum + previousSummary.X1_sum,
-                   X0_sum + previousSummary.X0_sum,
-                   X1_sum2 + previousSummary.X1_sum2,
-                   X0_sum2 + previousSummary.X0_sum2
-                 )
-```
 
 ---
 Compute parameters for the quadratic discriminant model from sufficient statistics.
