@@ -26,19 +26,14 @@ class: center, middle
 
 ---
 # Problem statement
---
 
  * We're building ML models from lots of data
---
 
  * We get more data from time to time
---
 
  * We want to update the model with the new data
---
 
  * In general, it's necessary to start over with the whole data set
---
 
  * Under what circumstances can we work with just the new data?
 
@@ -46,38 +41,33 @@ class: center, middle
 # Road map
 
  * First let's look at a general theoretical answer
+
  * Then we'll consider a simple model for which the theoretical answer is directly applicable
+
  * ... and look at some Scala code for that
+
  * Finally we'll expand our consideration to more complex models for which the theory is not directly applicable
 ---
 # Theoretical answer
---
 
  * Exact incremental update == model has "sufficient statistics"
---
 
  * "Sufficient" means: if you have these statistics, you can throw away anything else
---
 
  * Not all models have sufficient statistics
---
 
  * ... but some interesting models do: linear regression, logistic regression, quadratic discriminant
 
 ---
 # Quadratic discriminant classifier
 
---
-
  * Given `\(p(x|c)\)` is a Gaussian density for each class `\(c\)`
-
---
 
  * then the surfaces of constant `\(p(c|x)\)` are conic sections
 
---
-
  * When both classes have the same covariance, the surfaces of constant `\(p(c|x)\)` are planes
+
+ * ... this is an alternate formulation of logistic regression
 
 ---
 ## Scatterplots of samples from `\(p(x|c)\)`
@@ -97,9 +87,8 @@ class: center, middle
 ---
 # Quadratic discriminant and sufficient statistics
 
---
-
  * s.s. for q.d. are the count, sum, and sum of squares for each class
+
  * ... from those we can compute model parameters
  
 ---
@@ -127,7 +116,7 @@ case class QuadraticDiscriminantSufficientStatistics (
 ```
 
 ---
-Compute sufficient statistics for new data. 
+Compute sufficient statistics for new data. Here `X` is a Spark RDD.
 
 ```scala
     val X1 = X.filter {case LabeledPoint (l, f) => l == 1.0} ...
@@ -242,19 +231,14 @@ At this point we have all that's needed for a basic implementation.
 
 ---
 # Cross-validation and sufficient statistics
---
 
  * CV = train on most of data, test on hold-out data; rotate blocks and repeat
---
 
  * Sufficient statistics can help us calculate CV!
---
 
  * Compute s.s. for each block and add them all up
---
 
  * For each block, subtract s.s. from total and use what's left to compute model parameters
---
 
  * ... and then test the model on the held-out block
 
@@ -295,34 +279,17 @@ which uses cross entropy as the goodness of fit:
 
 What can be done when a model does not have sufficient statistics?
 
---
-
  * Some models have latent / hidden / missing variables
---
-
-   * often trained with expectation-maximization algorithms: E step = estimate missing variables,
-    M step = maximum likelihood given missing
---
-
-   * M step may have sufficient statistics
---
-
-   * ... so the model "almost" or "sort of" has sufficient statistics
---
 
    * e.g. Gaussian mixture, topic-word models
---
 
    * maybe neural networks and tree-structured models as well?
---
 
      * for n.n., hidden variables might be the parameters for the hidden units
---
 
      * for tree models, hidden variables might be the location of splits in different dimensions
---
 
- * Can we exploit s.s., for example, by fixing the missing variables and carrying out only the M step?
+ * Can we exploit s.s., for example, by fixing the missing variables?
 
 ---
 # Tree-structured models and sufficient statistics
@@ -352,51 +319,40 @@ What can be done when a model does not have sufficient statistics?
 ---
  * RF splitting heuristic is based on "impurity": try to split so that impurity is minimized on either side.
 
---
-
  * Therefore sufficient statistics are whatever's needed to compute impurity. 
    ... this amounts to an approximation of the per-variable distribution, e.g. a histogram
-
---
 
  * Spark RF implementation already makes use of that!
    ... only for one-time training, not for incremental update or cross validation. But machinery is in place already.
 
 ---
 # Conclusions and directions for further investigation
---
 
  * Working with sufficient statistics yields exactly the same result as working with all data
+
  * ... so that can greatly speed up some common ML operations
---
 
- * But s.s. exist only for some relatively simple models
- * ... and for models in wide use (trees, neural networks), s.s. depend on hidden variables
---
+ * Need to find approximations for models which do not have exact s.s.
 
- * For trees, hidden variables = splitting planes + leaf counts
+ * For trees, hidden variables = splitting planes (derived from impurity)
+
  * ... we can approximate that pretty closely, so we can have an almost-exact incremental update
---
 
  * For neural networks, hidden variables = parameters for hidden units
+
  * ... I don't see any easy way to approximate those parameters
+
  * ... but maybe s.s. could figure in a fast scheme for searching over random hidden units
---
-
- * Low-hanging fruit:
- * ... incremental update for Spark random forest
- * ... including exploiting s.s. in CV
---
-
- * Exploiting s.s. for neural network training seems a little farther out,
-   and maybe less certain to yield something useful
 
 ---
 # Just for fun
 
  * Let's play "Spot the Monad"
+
  * Looks like the sufficient statistics update is sort of like a state monad
+
  * ... add some stuff to s.s., output result and update s.s.
+
  * Working out the details with lots of help from tpolecat
     </textarea>
     <script src="https://gnab.github.io/remark/downloads/remark-latest.min.js"></script>
